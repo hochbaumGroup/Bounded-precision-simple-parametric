@@ -137,15 +137,7 @@ computeArcCapacity(Arc *ac, long long param)
 {
 
 
-  if( ac->from == source )
-  {
-    return numax( ac->wt - (param*(ac->cst))/APP_VAL, 0);
-  }
-  else if( ac->to == sink )
-  {
-    return numax( (param*(ac->cst))/APP_VAL - ac->wt, 0);
-  }
-  return ac->capacity;
+  return numax( ac->wt + (param*(ac->cst))/APP_VAL, 0);
 }
 
 
@@ -271,9 +263,9 @@ addOutOfTreeNode (Node *n, Arc *out)
 static void
 readDimacsFileCreateList (void) 
 {
-	int lineLength=32768, i, capacity, numLines = 0, from, to, first=0, j;
+	int lineLength=65536, i, capacity, numLines = 0, from, to, first=0, j, prec=1;
 	char *line, *word, ch, ch1, *tmpline;
-	double param;
+	double param, wt, cst;
 	Arc *ac = NULL;
 
 	if ((line = (char *) malloc ((lineLength+1) * sizeof (char))) == NULL)
@@ -307,9 +299,6 @@ readDimacsFileCreateList (void)
 			tmpline = getNextWord(tmpline, word);
 			//word
 			tmpline = getNextWord(tmpline, word);
-			//numNodes 
-			tmpline = getNextWord(tmpline, word);
-			numNodes = atoi(word);
 
 			//numNodes 
 			tmpline = getNextWord(tmpline, word);
@@ -318,6 +307,11 @@ readDimacsFileCreateList (void)
 			//numArcs
 			tmpline = getNextWord(tmpline, word);
 			numArcs = atoi(word);
+
+			//prec
+			tmpline = getNextWord(tmpline, word);
+			prec = atoi(word);
+			APP_VAL = llround(pow(10.0, prec));
 
 			//numParams 
 			tmpline = getNextWord(tmpline, word);
@@ -400,19 +394,21 @@ readDimacsFileCreateList (void)
 			ac->from = from-1;
 			ac->to = to-1;
 
+			tmpline = getNextWord (tmpline, word);			
+			wt = atof (word);
+			wt = llround(wt * APP_VAL);
 
-			for (j=0; j<(((from == source) || (to == sink)) ? numParams : 1); ++j)
-			{
-				tmpline = getNextWord (tmpline, word);			
-				ac->capacities[j] = (int) atoi (word);
-			}
+			tmpline = getNextWord (tmpline, word);			
+			cst= atof (word);
+			cst = llround(cst * APP_VAL);
 
-			ac->capacity = ac->capacities[0];
+			// READ CAPACITY
+			ac->capacity = numax(0, ((_params[0]*ac->cst)/APP_VAL) + ac->wt) ;
 
 			++ first;
 
-			++ ac->from->numAdjacent;
-			++ ac->to->numAdjacent;
+			++ adjacencyList[ac->from].numAdjacent;
+			++ adjacencyList[ac->to].numAdjacent;
 
 			break;
 
@@ -422,11 +418,11 @@ readDimacsFileCreateList (void)
 
 			if (ch1 == 's')
 			{
-				source = i;	
+				source = i-1;	
 			}
 			else if (ch1 == 't')
 			{
-				sink = i;	
+				sink = i-1;	
 			}
 			else
 			{
@@ -445,8 +441,8 @@ readDimacsFileCreateList (void)
 
 	for (i=0; i<numArcs; i++) 
 	{
-		to = arcList[i].to->number;
-		from = arcList[i].from->number;
+		to = arcList[i].to;
+		from = arcList[i].from;
 		capacity = arcList[i].capacity;
 
 		if (!((source == to) || (sink == from) || (from == to))) 
