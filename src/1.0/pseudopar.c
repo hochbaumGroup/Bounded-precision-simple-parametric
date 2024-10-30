@@ -92,7 +92,7 @@ static Root *strongRoots = NULL;
 static int *labelCount = NULL;
 static Arc *arcList = NULL;
 
-static double *_params;
+static long long*_params;
 //-----------------------------------------------------
 
 #ifdef STATS
@@ -137,6 +137,16 @@ computeArcCapacity(Arc *ac, long long param)
 {
 
 
+#ifdef VERBOSE
+
+	printf("c capacity of arc %d->%d with wt = %lld cst = %lld at param = %lld is %lld\n",
+			ac->from,
+			ac->to,
+			ac->wt,
+			ac->cst,
+			param,
+			numax( ac->wt + (param*(ac->cst))/APP_VAL, 0) );
+#endif
   return numax( ac->wt + (param*(ac->cst))/APP_VAL, 0);
 }
 
@@ -318,10 +328,11 @@ readDimacsFileCreateList (void)
 			numParams = atoi(word);
 
 #ifdef VERBOSE
-			printf ("numNodes: %d, numArcs: %d, numParams: %d\n", 
+			printf ("numNodes: %d, numArcs: %d, numParams: %d, prec = %d\n", 
 				numNodes,
 				numArcs,
-				numParams);
+				numParams,
+				prec);
 #endif
 
 			if ((adjacencyList = (Node *) malloc (numNodes * sizeof (Node))) == NULL)
@@ -348,7 +359,7 @@ readDimacsFileCreateList (void)
 				exit (1);
 			}
 
-			if ((_params= (double *) malloc (numParams * sizeof (double))) == NULL)
+			if ((_params= (long long*) malloc (numParams * sizeof (long long))) == NULL)
 			{
 				printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
 				exit (1);
@@ -370,7 +381,11 @@ readDimacsFileCreateList (void)
 			{
 				tmpline = getNextWord(tmpline, word);
 				param = atof(word);
-				_params[i] = param;
+				_params[i] = param*APP_VAL;
+#ifdef VERBOSE
+				printf ("read param = %lf\n", 
+				param);
+#endif
 			}
 
 
@@ -396,17 +411,25 @@ readDimacsFileCreateList (void)
 
 			tmpline = getNextWord (tmpline, word);			
 			wt = atof (word);
-			wt = llround(wt * APP_VAL);
+			ac->wt = llround(wt * APP_VAL);
 
 			tmpline = getNextWord (tmpline, word);			
 			cst= atof (word);
-			cst = llround(cst * APP_VAL);
+			ac->cst = llround(cst * APP_VAL);
 
 			// READ CAPACITY
-			ac->capacity = numax(0, ((_params[0]*ac->cst)/APP_VAL) + ac->wt) ;
+			ac->capacity = computeArcCapacity(ac, _params[0]);
+				//numax(0, ((_params[0]*ac->cst)/APP_VAL) + ac->wt) ;
 
 			++ first;
-
+#ifdef VERBOSE
+			printf("read arc %d->%d with wt = %lf cst = %lf, integer cap is  %lld\n",
+					from,
+					to,
+					wt,
+					cst,
+					ac->capacity);
+#endif
 			++ adjacencyList[ac->from].numAdjacent;
 			++ adjacencyList[ac->to].numAdjacent;
 
@@ -453,15 +476,15 @@ readDimacsFileCreateList (void)
 			}
 			else if (from == source)
 			{
-				addOutOfTreeNode (&adjacencyList[from-1], &arcList[i]);
+				addOutOfTreeNode (&adjacencyList[from], &arcList[i]);
 			}
 			else if (to == sink)
 			{
-				addOutOfTreeNode (&adjacencyList[to-1], &arcList[i]);
+				addOutOfTreeNode (&adjacencyList[to], &arcList[i]);
 			}
 			else
 			{
-				addOutOfTreeNode (&adjacencyList[from-1], &arcList[i]);
+				addOutOfTreeNode (&adjacencyList[from], &arcList[i]);
 			}
 		}
 	}
@@ -844,7 +867,7 @@ updateCapacities (const int theparam)
 	Arc *tempArc;
 	Node *tempNode;
 
-	long long param = llround((_params[theparam]*APP_VAL));//lambdaStart + ((lambdaEnd-lambdaStart) *  ((float)theparam/(numParams-1)));
+	long long param = _params[theparam];//lambdaStart + ((lambdaEnd-lambdaStart) *  ((float)theparam/(numParams-1)));
 	size = adjacencyList[source].numOutOfTree;
 	for (i=0; i<size; ++i)
 	{
@@ -932,9 +955,9 @@ pseudoflowPhase1 (void)
 	{ 
 		processRoot (strongRoot);
 	}
-	printf ("c Finished solving parameter %d\nc Flow: %d\nc Elapsed time: %.3f\n", 
+	printf ("c Finished solving parameter %d\nc Flow: %lf\nc Elapsed time: %.3f\n", 
 		(theparam+1),
-		computeMinCut (),
+		(double)computeMinCut ()/APP_VAL,
 		(timer () - thetime));
 
 	for (theparam=1; theparam < numParams; ++ theparam)
@@ -948,9 +971,9 @@ pseudoflowPhase1 (void)
 		{ 
 			processRoot (strongRoot);
 		}
-		printf ("c Finished parameter: %d\nc Flow: %d\nc Elapsed time: %.3f\n", 
+		printf ("c Finished parameter: %d\nc Flow: %lf\nc Elapsed time: %.3f\n", 
 			(theparam+1),
-			computeMinCut (),
+			(double)computeMinCut ()/APP_VAL,
 			(timer () - thetime));
 	}
 }
