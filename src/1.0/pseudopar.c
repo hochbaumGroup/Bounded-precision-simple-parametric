@@ -93,6 +93,11 @@ static int *labelCount = NULL;
 static Arc *arcList = NULL;
 
 static long long*_params;
+
+static long long init_param;
+static long long end_param;
+static long long step_param;
+static long long curr_param;
 //-----------------------------------------------------
 
 #ifdef STATS
@@ -275,7 +280,7 @@ readDimacsFileCreateList (void)
 {
 	int lineLength=65536, i, capacity, numLines = 0, from, to, first=0, j, prec=1;
 	char *line, *word, ch, ch1, *tmpline;
-	double param, wt, cst;
+	double param, wt, cst, init_par, end_par, step_par;
 	Arc *ac = NULL;
 
 	if ((line = (char *) malloc ((lineLength+1) * sizeof (char))) == NULL)
@@ -323,9 +328,24 @@ readDimacsFileCreateList (void)
 			prec = atoi(word);
 			APP_VAL = llround(pow(10.0, prec));
 
-			//numParams 
+			//init_param
 			tmpline = getNextWord(tmpline, word);
-			numParams = atoi(word);
+			init_par = atof(word);
+			init_param = llround(init_par * APP_VAL);
+
+			//end_param
+			tmpline = getNextWord(tmpline, word);
+			end_par = atof(word);
+			end_param = llround(end_par * APP_VAL);
+
+			//step_param
+			tmpline = getNextWord(tmpline, word);
+			step_par = atof(word);
+			step_param = llround(step_par * APP_VAL);
+
+			curr_param = init_param;
+
+
 
 #ifdef VERBOSE
 			printf ("numNodes: %d, numArcs: %d, numParams: %d, prec = %d\n", 
@@ -359,11 +379,6 @@ readDimacsFileCreateList (void)
 				exit (1);
 			}
 
-			if ((_params= (long long*) malloc (numParams * sizeof (long long))) == NULL)
-			{
-				printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
-				exit (1);
-			}
 
 			for (i=0; i<numNodes; ++i)
 			{
@@ -375,17 +390,6 @@ readDimacsFileCreateList (void)
 			for (i=0; i<numArcs; ++i)
 			{
 				initializeArc (&arcList[i]);
-			}
-
-			for (i=0; i<numParams; ++i)
-			{
-				tmpline = getNextWord(tmpline, word);
-				param = atof(word);
-				_params[i] = param*APP_VAL;
-#ifdef VERBOSE
-				printf ("read param = %lf\n", 
-				param);
-#endif
 			}
 
 
@@ -418,7 +422,7 @@ readDimacsFileCreateList (void)
 			ac->cst = llround(cst * APP_VAL);
 
 			// READ CAPACITY
-			ac->capacity = computeArcCapacity(ac, _params[0]);
+			ac->capacity = computeArcCapacity(ac, curr_param);
 				//numax(0, ((_params[0]*ac->cst)/APP_VAL) + ac->wt) ;
 
 			++ first;
@@ -867,7 +871,7 @@ updateCapacities (const int theparam)
 	Arc *tempArc;
 	Node *tempNode;
 
-	long long param = _params[theparam];//lambdaStart + ((lambdaEnd-lambdaStart) *  ((float)theparam/(numParams-1)));
+	long long param = curr_param;//lambdaStart + ((lambdaEnd-lambdaStart) *  ((float)theparam/(numParams-1)));
 	size = adjacencyList[source].numOutOfTree;
 	for (i=0; i<size; ++i)
 	{
@@ -960,8 +964,11 @@ pseudoflowPhase1 (void)
 		(double)computeMinCut ()/APP_VAL,
 		(timer () - thetime));
 
-	for (theparam=1; theparam < numParams; ++ theparam)
+	curr_param += step_param;
+
+	for (; curr_param <= end_param; curr_param += step_param)
 	{
+		++theparam;
 		updateCapacities (theparam);
 #ifdef PROGRESS
 		printf ("c Finished updating capacities and excesses.\n");

@@ -1,5 +1,5 @@
 c this is a comment
-p max 4 5 3 3 0.5 1.0 1.5
+p max 4 5 3 0.5 1.5 0.1
 n 1 s
 n 4 t
 a 1 2 1.0 0.2
