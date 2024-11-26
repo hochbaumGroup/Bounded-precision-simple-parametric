@@ -16,6 +16,12 @@ a from_1 to_1 a_1 b_1
 a from_m to_m a_m b_m
 ```
 
-To compile the code, use the makefile provided.
+## Compile
+
+A makefile is provided. To compile into an executable just run the command
+
+```
+make
+```
 
 
