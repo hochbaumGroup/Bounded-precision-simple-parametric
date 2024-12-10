@@ -168,16 +168,20 @@ computeArcCapacity(Arc *ac, long long param)
 #endif
 
 static int
-isThereNextParam()
+isThereNextParam(int param)
 {
 	if ( lambda_format_input == SEQUENCE )
 	{
-		return curr_param < numParams;
+		return param < numParams;
 	}
 	else if (lambda_format_input == INTERVAL)
 	{
 		return curr_param < end_param;
 
+	}
+	else
+	{
+		printf("c error : unset format type\n");
 	}
 	return 0;
 
@@ -407,9 +411,10 @@ readDimacsFileCreateList (void)
 
 					tmpline = getNextWord(tmpline, word);
 					param = atof(word);
-					_params[i] = llround(step_par * APP_VAL);
+					_params[i] = llround(param* APP_VAL);
 
 				}
+				numParams = num_params;
 				curr_param = _params[0];
 
 
@@ -1056,7 +1061,8 @@ pseudoflowPhase1 (void)
 
 	//for (; curr_param <= end_param; curr_param += step_param)
 	//{
-	while (isThereNextParam())
+	
+	while (isThereNextParam(theparam+1))
 	{
 		++theparam;
 		curr_param = getParameter(theparam);
@@ -1453,6 +1459,11 @@ freeMemory (void)
 		{
 			free (adjacencyList[i].outOfTree);
 		}
+	}
+
+	if ( _params != NULL )
+	{
+		free (_params);
 	}
 
 	free (adjacencyList);
