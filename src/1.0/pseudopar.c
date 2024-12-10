@@ -76,6 +76,12 @@ typedef struct root
 	Node *end;
 } Root;
 
+enum lambda_format {
+	UNKNOWN,
+	SEQUENCE,
+	INTERVAL
+};
+
 //---------------  Global variables ------------------
 static int numNodes = 0;
 static int numArcs = 0;
@@ -98,6 +104,9 @@ static long long init_param;
 static long long end_param;
 static long long step_param;
 static long long curr_param;
+
+static enum lambda_format lambda_format_input = UNKNOWN;
+
 //-----------------------------------------------------
 
 #ifdef STATS
@@ -157,6 +166,40 @@ computeArcCapacity(Arc *ac, long long param)
 
 
 #endif
+
+static int
+isThereNextParam()
+{
+	if ( lambda_format_input == SEQUENCE )
+	{
+		return curr_param < numParams;
+	}
+	else if (lambda_format_input == INTERVAL)
+	{
+		return curr_param < end_param;
+
+	}
+	return 0;
+
+}
+
+static long long
+getParameter (int param)
+{
+	if ( lambda_format_input == SEQUENCE )
+	{
+		return _params[param];
+	}
+	else if (lambda_format_input == INTERVAL )
+	{
+		curr_param = init_param + ((long long) param)* step_param;
+		
+		return curr_param < end_param ? curr_param : end_param;
+
+	}
+
+	return 0;
+}
 
 static void
 initializeNode (Node *nd, const int n)
@@ -279,6 +322,7 @@ static void
 readDimacsFileCreateList (void) 
 {
 	int lineLength=65536, i, capacity, numLines = 0, from, to, first=0, j, prec=1;
+	int num_params;
 	char *line, *word, ch, ch1, *tmpline;
 	double param, wt, cst, init_par, end_par, step_par;
 	Arc *ac = NULL;
@@ -315,6 +359,21 @@ readDimacsFileCreateList (void)
 			//word
 			tmpline = getNextWord(tmpline, word);
 
+			if ( strcmp(word, "sequence" ) == 0 )
+			{
+				lambda_format_input = SEQUENCE;
+			}
+			else if ( strcmp(word, "interval" ) == 0 )
+			{
+				lambda_format_input = INTERVAL;
+			}
+			else
+			{
+				printf("c Unknown lambda input type %s", word);
+				printf("c Options are \"interval\" and \"sequence\"\n");
+				exit(0);
+			}
+
 			//numNodes 
 			tmpline = getNextWord(tmpline, word);
 			numNodes = atoi(word);
@@ -328,22 +387,52 @@ readDimacsFileCreateList (void)
 			prec = atoi(word);
 			APP_VAL = llround(pow(10.0, prec));
 
-			//init_param
-			tmpline = getNextWord(tmpline, word);
-			init_par = atof(word);
-			init_param = llround(init_par * APP_VAL);
+			// A bit messy, maybe worth refactoring this part
 
-			//end_param
-			tmpline = getNextWord(tmpline, word);
-			end_par = atof(word);
-			end_param = llround(end_par * APP_VAL);
 
-			//step_param
-			tmpline = getNextWord(tmpline, word);
-			step_par = atof(word);
-			step_param = llround(step_par * APP_VAL);
+			if ( lambda_format_input == SEQUENCE)
+			{
+				tmpline = getNextWord(tmpline, word);
+				num_params = atoi(word);
 
-			curr_param = init_param;
+				
+				if ((_params = (long long *) malloc ((num_params) * sizeof (num_params))) == NULL)
+				{
+					printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
+					exit (1);
+				}
+
+				for ( i=0; i<num_params; ++i )
+				{
+
+					tmpline = getNextWord(tmpline, word);
+					param = atof(word);
+					_params[i] = llround(step_par * APP_VAL);
+
+				}
+				curr_param = _params[0];
+
+
+			}
+			else if (lambda_format_input == INTERVAL )
+			{
+				//init_param
+				tmpline = getNextWord(tmpline, word);
+				init_par = atof(word);
+				init_param = llround(init_par * APP_VAL);
+
+				//end_param
+				tmpline = getNextWord(tmpline, word);
+				end_par = atof(word);
+				end_param = llround(end_par * APP_VAL);
+
+				//step_param
+				tmpline = getNextWord(tmpline, word);
+				step_par = atof(word);
+				step_param = llround(step_par * APP_VAL);
+
+				curr_param = init_param;
+			}
 
 
 
@@ -964,11 +1053,13 @@ pseudoflowPhase1 (void)
 		(double)computeMinCut ()/APP_VAL,
 		(timer () - thetime));
 
-	curr_param += step_param;
 
-	for (; curr_param <= end_param; curr_param += step_param)
+	//for (; curr_param <= end_param; curr_param += step_param)
+	//{
+	while (isThereNextParam())
 	{
 		++theparam;
+		curr_param = getParameter(theparam);
 		updateCapacities (theparam);
 #ifdef PROGRESS
 		printf ("c Finished updating capacities and excesses.\n");
