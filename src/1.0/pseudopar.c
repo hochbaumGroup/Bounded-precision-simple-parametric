@@ -328,7 +328,7 @@ readDimacsFileCreateList (void)
 	int lineLength=65536, i, capacity, numLines = 0, from, to, first=0, j, prec=1;
 	int num_params;
 	char *line, *word, ch, ch1, *tmpline;
-	double param, wt, cst, init_par, end_par, step_par;
+	double param, a_i, b_i, init_par, end_par, step_par;
 	Arc *ac = NULL;
 
 	if ((line = (char *) malloc ((lineLength+1) * sizeof (char))) == NULL)
@@ -507,13 +507,25 @@ readDimacsFileCreateList (void)
 			ac->from = from-1;
 			ac->to = to-1;
 
-			tmpline = getNextWord (tmpline, word);			
-			wt = atof (word);
-			ac->wt = llround(wt * APP_VAL);
+			a_i = b_i = 0.0;
 
 			tmpline = getNextWord (tmpline, word);			
-			cst= atof (word);
-			ac->cst = llround(cst * APP_VAL);
+			a_i = atof (word);
+
+			if ( from == source || to == sink )
+			{
+				tmpline = getNextWord (tmpline, word);			
+				b_i = atof (word);
+			}
+			else
+			{
+				b_i = a_i;
+				a_i = 0;
+			}
+
+			ac->wt = llround(b_i * APP_VAL);
+			ac->cst = llround(a_i* APP_VAL);
+
 
 			// READ CAPACITY
 			ac->capacity = computeArcCapacity(ac, curr_param);
