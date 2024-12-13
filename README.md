@@ -9,8 +9,8 @@ The executable reads input from standard input in the following format:
 ```
 c < Comment lines >
 p < SEQUENCE | INTERVAL > < # vertices > < # arcs > < # decimal places >  [ < # parameters > < parameter1 > < parameter2 > ... < parameterk > ] [ < start interval > < end interval > < step interval> ]
-n sourceID s
-n sinkID t
+n < source > s
+n < sink > t
 a < from-node > < to-node > < capacity >
 a < source > < to-node > < a_capacity > < b_capacity > 
 a < from-node > < sink > < a_capacity > < b_capacity > 
