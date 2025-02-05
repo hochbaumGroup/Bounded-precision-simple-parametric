@@ -1,6 +1,6 @@
 # Linear Simple Parametric Minimum Cut using HPF
 
-This repository provides an implementation of the **HPF algorithm** to compute the **minimum cut** for a linear simple parametric flow problem. The problem is discretized over a user-specified precision, which represents the number of decimal places used in each calculation.
+This repository provides an implementation of the **HPF algorithm** to compute the **minimum cut** for a linear simple parametric flow problem. The problem is discretized over a user-specified precision.
 
 ## Input Format
 
