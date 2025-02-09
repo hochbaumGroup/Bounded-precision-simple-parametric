@@ -14,8 +14,8 @@ p < SEQUENCE | INTERVAL > < # vertices > < # arcs > < # decimal places >  [ < # 
 n < source > s
 n < sink > t
 a < from-node > < to-node > < capacity >
-a < source > < to-node > < a_capacity > < b_capacity > 
-a < from-node > < sink > < a_capacity > < b_capacity > 
+a < source > < to-node > < a_i > < b_i > 
+a < from-node > < sink > < a_i > < b_i > 
 ```
 
 The user can provide a list of parameter as either:
