@@ -2,7 +2,7 @@
 
 This repository provides an implementation of the **HPF algorithm** to compute the **minimum cut** for a linear simple parametric flow problem. Each source adjacent arc  and sink adjacent arc capacity is a linear function  ``a_i*lambda + b_i``, where ``a_i`` and ``b_i`` are the coefficients of the linear function of the ``i``-th arc, and ``lambda`` is the value of the parameter. The values of ``a_i`` are such that the capacities of source adjacent arcs are non decreasing, and the capacities of sink adjacent arcs are non increasing.
 
-The problem is discretized over a user-specified precision. This means that the program accepts decimal numbers as input, but capacities are truncated to a fixed number of decimal places.
+The problem is discretized over a user-specified precision. This means that the program accepts decimal numbers as input, but capacities are truncated to a fixed number of decimal places. Note that too much decimal places can produce overflow issues.
 
 ## Input Format
 
