@@ -159,9 +159,9 @@ computeArcCapacity(Arc *ac, long long param)
 			ac->wt,
 			ac->cst,
 			param,
-			numax( ac->wt + (param*(ac->cst))/APP_VAL, 0) );
+			numax( ac->wt + ((param*(ac->cst))/APP_VAL), 0) );
 #endif
-  return numax( ac->wt + (param*(ac->cst))/APP_VAL, 0);
+  return numax( ac->wt + ((param*(ac->cst))/APP_VAL), 0);
 }
 
 
@@ -512,8 +512,11 @@ readDimacsFileCreateList (void)
 			tmpline = getNextWord (tmpline, word);			
 			a_i = atof (word);
 
-			if ( from == source || to == sink )
+			if ( ac->from == source || ac->to == sink )
 			{
+#ifdef VERBOSE
+				puts("c this arc goes from source or to sink");
+#endif
 				tmpline = getNextWord (tmpline, word);			
 				b_i = atof (word);
 			}
@@ -533,11 +536,11 @@ readDimacsFileCreateList (void)
 
 			++ first;
 #ifdef VERBOSE
-			printf("read arc %d->%d with wt = %lf cst = %lf, integer cap is  %lld\n",
-					from,
-					to,
-					wt,
-					cst,
+			printf("read arc %d->%d with wt = %lld cst = %lld, integer cap is  %lld\n",
+					ac->from,
+					ac->to,
+					ac->wt,
+					ac->cst,
 					ac->capacity);
 #endif
 			++ adjacencyList[ac->from].numAdjacent;
@@ -1038,10 +1041,11 @@ updateCapacities (const int theparam)
 	highestStrongLabel = (numNodes-1);
 }
 
-static int
+static long long 
 computeMinCut (void)
 {
-	int i, mincut=0;
+	int i;
+	long long mincut=0;
 
 	for (i=0; i<numArcs; ++i) 
 	{
