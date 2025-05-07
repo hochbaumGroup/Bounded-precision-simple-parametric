@@ -1,0 +1,8 @@
+c This is one comment
+p interval 4 4 3 0.5 1.5 0.5
+n 1 s
+n 2 t
+a 3 4 1
+a 4 3 2
+a 1 3 1 2
+a 3 2 -1 2
