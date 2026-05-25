@@ -161,7 +161,7 @@ computeArcCapacity(Arc *ac, long long param)
 			param,
 			numax( ac->wt + ((param*(ac->cst))/APP_VAL), 0) );
 #endif
-  return numax( ac->wt + ((param*(ac->cst))/APP_VAL), 0);
+  return numax( ac->wt + (param/APP_VAL)*ac->cst + (param%APP_VAL)*ac->cst/APP_VAL, 0);
 }
 
 
@@ -322,28 +322,62 @@ addOutOfTreeNode (Node *n, Arc *out)
 	++ n->numOutOfTree;
 }
 
-static void
-readDimacsFileCreateList (void) 
+static int
+readLine (char **linep, size_t *capp)
 {
-	int lineLength=65536, i, capacity, numLines = 0, from, to, first=0, j, prec=1;
+	size_t pos = 0;
+	char *tmp;
+
+	if (!*linep)
+	{
+		*capp = 1024;
+		*linep = (char *) malloc (*capp);
+		if (!*linep)
+		{
+			printf ("%s Line %d: Out of memory\n", __FILE__, __LINE__);
+			exit (1);
+		}
+	}
+
+	while (1)
+	{
+		if (!fgets (*linep + pos, (int)(*capp - pos), stdin))
+		{
+			return pos > 0;
+		}
+		pos += strlen (*linep + pos);
+		if ((*linep)[pos - 1] == '\n')
+		{
+			return 1;
+		}
+		*capp *= 2;
+		tmp = (char *) realloc (*linep, *capp);
+		if (!tmp)
+		{
+			printf ("%s Line %d: Out of memory\n", __FILE__, __LINE__);
+			exit (1);
+		}
+		*linep = tmp;
+	}
+}
+
+static void
+readDimacsFileCreateList (void)
+{
+	int i, capacity, numLines = 0, from, to, first=0, j, prec=1;
 	int num_params;
-	char *line, *word, ch, ch1, *tmpline;
+	size_t lineLength = 0;
+	char *line = NULL, *word, ch, ch1, *tmpline;
 	double param, a_i, b_i, init_par, end_par, step_par;
 	Arc *ac = NULL;
 
-	if ((line = (char *) malloc ((lineLength+1) * sizeof (char))) == NULL)
+	if ((word = (char *) malloc (256 * sizeof (char))) == NULL)
 	{
 		printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
 		exit (1);
 	}
 
-	if ((word = (char *) malloc ((lineLength+1) * sizeof (char))) == NULL)
-	{
-		printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
-		exit (1);
-	}
-
-	while (fgets (line, lineLength, stdin))
+	while (readLine (&line, &lineLength))
 	{
 		++ numLines;
 
@@ -400,7 +434,7 @@ readDimacsFileCreateList (void)
 				num_params = atoi(word);
 
 				
-				if ((_params = (long long *) malloc ((num_params) * sizeof (num_params))) == NULL)
+				if ((_params = (long long *) malloc ((num_params) * sizeof (long long))) == NULL)
 				{
 					printf ("%s, %d: Could not allocate memory.\n", __FILE__, __LINE__);
 					exit (1);
@@ -570,7 +604,25 @@ readDimacsFileCreateList (void)
 		}
 	}
 
-	for (i=0; i<numNodes; ++i) 
+	for (i=0; i<numArcs; ++i)
+	{
+		if (arcList[i].from == source && arcList[i].cst < 0)
+		{
+			printf ("c Error: source-adjacent arc (%d,%d) violates monotonicity — "
+			        "source-adjacent arcs must be non-decreasing in lambda.\n",
+			        arcList[i].from + 1, arcList[i].to + 1);
+			exit (1);
+		}
+		if (arcList[i].to == sink && arcList[i].cst > 0)
+		{
+			printf ("c Error: sink-adjacent arc (%d,%d) violates monotonicity — "
+			        "sink-adjacent arcs must be non-increasing in lambda.\n",
+			        arcList[i].from + 1, arcList[i].to + 1);
+			exit (1);
+		}
+	}
+
+	for (i=0; i<numNodes; ++i)
 	{
 		createOutOfTree (&adjacencyList[i]);
 	}
@@ -976,7 +1028,7 @@ static void
 updateCapacities (const int theparam)
 {
 	int i, size;
-	int delta;
+	long long delta;
 	Arc *tempArc;
 	Node *tempNode;
 
@@ -990,8 +1042,8 @@ updateCapacities (const int theparam)
 		if (delta < 0)
 		{
       printf ("c Error on source-adjacent arc (%d, %d): capacity decreases by %lf (%lf minus %lf) at parameter %d.\n",
-          tempArc->from ,
-          tempArc->to ,
+          tempArc->from+1 ,
+          tempArc->to+1 ,
           (double)(-delta)/APP_VAL,
           (double)computeArcCapacity(tempArc, param)/APP_VAL, //tempArc->capacities[theparam],
           (double)tempArc->capacity/APP_VAL,
@@ -1017,15 +1069,12 @@ updateCapacities (const int theparam)
 		delta = (computeArcCapacity(tempArc, param) - tempArc->capacity);
 		if (delta > 0)
 		{
-			/*
-			printf ("c Error on sink-adjacent arc (%d, %d): capacity %d increases to %d at parameter %d.\n",
-				tempArc->from ,
-				tempArc->to ,
-				tempArc->capacity,
-				tempArc->capacities[theparam],
-				(theparam+1));
-				*/
-			exit(0);
+			printf ("c Error on sink-adjacent arc (%d, %d): capacity increases by %lf at parameter %d.\n",
+				tempArc->from + 1,
+				tempArc->to + 1,
+				(double)delta / APP_VAL,
+				theparam + 1);
+			exit (1);
 		}
 
 		tempArc->capacity += delta;
